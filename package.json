@@ -1,0 +1,23 @@
+{
+  "name": "render-express-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oleksandrkhmil-nixs/render-express-app.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/oleksandrkhmil-nixs/render-express-app/issues"
+  },
+  "homepage": "https://github.com/oleksandrkhmil-nixs/render-express-app#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
