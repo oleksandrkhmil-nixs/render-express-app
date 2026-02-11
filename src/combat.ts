@@ -4,6 +4,8 @@ import { upgradeCost } from './types';
 const TARGET_LEVEL = 3;
 const LOW_HP_THRESHOLD = 100;
 const MIN_ARMOR = 10;
+const TWO_ENEMIES_LOW_HP = 70;
+const TWO_ENEMIES_MIN_ARMOR = 20;
 
 /**
  * Resources needed to kill a tower (armor first, then HP).
@@ -15,12 +17,17 @@ function costToKill(tower: Tower): number {
 /**
  * Two-enemies mode: collect, upgrade to level 3, then spend everything on armor.
  * After an upgrade, spend any leftover resources on armor.
+ * If HP < 70 and armor < 20, spend everything on armor first.
  */
 function twoEnemiesEconomyActions(request: CombatRequest): CombatAction[] {
   const actions: CombatAction[] = [];
   const { playerTower } = request;
   let resources = playerTower.resources ?? 0;
   const level = playerTower.level;
+
+  if (playerTower.hp < TWO_ENEMIES_LOW_HP && playerTower.armor < TWO_ENEMIES_MIN_ARMOR && resources > 0) {
+    return [{ type: 'armor', amount: resources }];
+  }
 
   if (level >= TARGET_LEVEL) {
     if (resources > 0) {
