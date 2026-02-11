@@ -47,7 +47,7 @@ function armorControlCombat(request: CombatRequest): CombatAction[] {
   const hasMostArmor = myArmor >= maxEnemyArmor;
 
   // Rule 1: if anyone has more armor than us, invest in armor.
-  if (!hasMostArmor && Math.random() > 0.5) {
+  if (!hasMostArmor && Math.random() > 0.3) {
     const targetArmor = maxEnemyArmor + 5;
     const armorNeeded = Math.max(0, targetArmor - myArmor);
     const armorAmount = Math.min(resources, armorNeeded);
@@ -71,7 +71,7 @@ function armorControlCombat(request: CombatRequest): CombatAction[] {
   if (!target) {
     return [];
   }
-  if (target.armor > resources) {
+  if (target.armor >= resources + 50) {
     return [];
   }
 
