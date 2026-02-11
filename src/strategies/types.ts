@@ -5,4 +5,4 @@ export interface Strategy {
   combat: (request: CombatRequest) => CombatAction[];
 }
 
-export type StrategyName = 'legacy' | 'hybrid-lite';
+export type StrategyName = 'legacy' | 'hybrid-lite' | 'capped-buff';
