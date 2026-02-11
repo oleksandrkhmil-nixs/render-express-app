@@ -9,7 +9,7 @@ const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 8000;
 
 const BOT_NAME = process.env.BOT_NAME ?? 'Kingdom Wars Bot';
 const BOT_VERSION = '1.0';
-const ACTIVE_STRATEGY: StrategyName = 'hybrid-lite';
+const ACTIVE_STRATEGY: StrategyName = 'tempo-threat';
 const strategy = getStrategy(ACTIVE_STRATEGY);
 
 app.use(express.json());
