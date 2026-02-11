@@ -15,7 +15,7 @@ app.use(cors());
 
 /** Log every request with [KW-BOT] prefix for the log collector. */
 app.use((req: Request, _res: Response, next: () => void) => {
-  console.log(`[KW-BOT] ${req.method} ${req.path}`);
+  console.log(`[KW-BOT] [one-turn-kill] ${req.method} ${req.path}`);
   next();
 });
 
