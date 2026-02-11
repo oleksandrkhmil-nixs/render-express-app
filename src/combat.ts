@@ -2,6 +2,8 @@ import type { CombatRequest, CombatAction, Tower } from './types';
 import { upgradeCost } from './types';
 
 const TARGET_LEVEL = 3;
+const LOW_HP_THRESHOLD = 100;
+const MIN_ARMOR = 10;
 
 /**
  * Resources needed to kill a tower (armor first, then HP).
@@ -54,12 +56,17 @@ function oneEnemyActions(request: CombatRequest, living: Tower[]): CombatAction[
 
 /**
  * Save-for-kill: wait until enough resources to kill someone, then attack cheapest-to-kill target(s).
- * Used for 3+ enemies.
+ * Used for 3+ enemies. If HP < 100 and armor <= 10, spend everything on armor until armor > 10.
  */
 function threeEnemiesActions(request: CombatRequest, living: Tower[]): CombatAction[] {
-  const actions: CombatAction[] = [];
-  let resources = request.playerTower.resources ?? 0;
+  const { playerTower } = request;
+  let resources = playerTower.resources ?? 0;
 
+  if (playerTower.hp < LOW_HP_THRESHOLD && playerTower.armor <= MIN_ARMOR && resources > 0) {
+    return [{ type: 'armor', amount: resources }];
+  }
+
+  const actions: CombatAction[] = [];
   const minCostToKill = Math.min(...living.map(costToKill));
   if (resources < minCostToKill) {
     return [];
@@ -87,7 +94,7 @@ function threeEnemiesActions(request: CombatRequest, living: Tower[]): CombatAct
  * Strategy by number of living enemies:
  * - 1 enemy: spend everything on attacking the last living target.
  * - 2 enemies: economy mode (upgrade to level 3, then armor; armor after upgrade if leftover).
- * - 3+ enemies: save until we can kill, then attack cheapest-to-kill target(s).
+ * - 3+ enemies: if HP < 100 and armor <= 10, spend all on armor; else save until we can kill, then attack.
  */
 export function computeCombatActions(request: CombatRequest): CombatAction[] {
   const { enemyTowers } = request;
