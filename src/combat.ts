@@ -97,6 +97,10 @@ export function computeCombatActions(request: CombatRequest): CombatAction[] {
     return [];
   }
 
+  if (living.length === 1) {
+    return oneEnemyActions(request, living);
+  }
+
   if (living.length === 2) {
     return twoEnemiesEconomyActions(request);
   }
