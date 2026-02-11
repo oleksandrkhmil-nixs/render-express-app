@@ -71,7 +71,7 @@ function armorControlCombat(request: CombatRequest): CombatAction[] {
   if (!target) {
     return [];
   }
-  if (target.armor >= resources + 50) {
+  if (target.armor >= resources - 50) {
     return [];
   }
 
