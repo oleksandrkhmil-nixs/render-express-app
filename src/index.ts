@@ -15,7 +15,7 @@ interface RequestBody {
 }
 
 app.get('/', (req: Request, res: Response) => {
-  res.send('Hello world!');
+  res.send('if err != nil rulez');
 });
 
 app.post('/post', (req: Request, res: Response) => {
