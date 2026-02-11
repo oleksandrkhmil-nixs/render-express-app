@@ -1,4 +1,7 @@
 import type { CombatRequest, CombatAction, Tower } from './types';
+import { upgradeCost } from './types';
+
+const TARGET_LEVEL = 3;
 
 /**
  * Resources needed to kill a tower (armor first, then HP).
@@ -8,7 +11,37 @@ function costToKill(tower: Tower): number {
 }
 
 /**
- * Save-for-kill strategy:
+ * One-enemy mode (1v1): collect, upgrade to level 3, then spend everything on armor.
+ * After an upgrade, spend any leftover resources on armor.
+ */
+function oneEnemyActions(request: CombatRequest): CombatAction[] {
+  const actions: CombatAction[] = [];
+  const { playerTower } = request;
+  let resources = playerTower.resources ?? 0;
+  const level = playerTower.level;
+
+  if (level >= TARGET_LEVEL) {
+    if (resources > 0) {
+      actions.push({ type: 'armor', amount: resources });
+    }
+    return actions;
+  }
+
+  const cost = upgradeCost(level);
+  if (resources < cost) {
+    return [];
+  }
+
+  actions.push({ type: 'upgrade' });
+  resources -= cost;
+  if (resources > 0) {
+    actions.push({ type: 'armor', amount: resources });
+  }
+  return actions;
+}
+
+/**
+ * Save-for-kill strategy when 2+ enemies:
  * 1. Collect: if we can't kill any enemy, return [] (save resources).
  * 2. Kill: if we can kill at least one, attack the cheapest-to-kill target(s).
  */
@@ -20,6 +53,10 @@ export function computeCombatActions(request: CombatRequest): CombatAction[] {
   const living = enemyTowers.filter((t) => t.hp > 0);
   if (living.length === 0) {
     return [];
+  }
+
+  if (living.length === 1) {
+    return oneEnemyActions(request);
   }
 
   const minCostToKill = Math.min(...living.map(costToKill));
