@@ -1,13 +1,16 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import type { NegotiateRequest, CombatRequest, NegotiateResponseItem } from './types';
-import { computeCombatActions } from './combat';
+import type { NegotiateRequest, CombatRequest } from './types';
+import { getStrategy } from './strategies';
+import type { StrategyName } from './strategies/types';
 
 const app = express();
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 8000;
 
 const BOT_NAME = process.env.BOT_NAME ?? 'Kingdom Wars Bot';
 const BOT_VERSION = '1.0';
+const ACTIVE_STRATEGY: StrategyName = 'hybrid-lite';
+const strategy = getStrategy(ACTIVE_STRATEGY);
 
 app.use(express.json());
 app.use(cors());
@@ -29,7 +32,7 @@ app.get('/healthz', (_req: Request, res: Response) => {
 app.get('/info', (_req: Request, res: Response) => {
   res.json({
     name: BOT_NAME,
-    strategy: 'AI-trapped-strategy',
+    strategy: ACTIVE_STRATEGY,
     version: BOT_VERSION
   });
 });
@@ -41,7 +44,7 @@ app.post('/negotiate', (req: Request, res: Response) => {
       res.json([]);
       return;
     }
-    const diplomacy: NegotiateResponseItem[] = [];
+    const diplomacy = strategy.negotiate(body);
     res.json(diplomacy);
   } catch {
     res.json([]);
@@ -55,7 +58,7 @@ app.post('/combat', (req: Request, res: Response) => {
       res.json([]);
       return;
     }
-    const actions = computeCombatActions(body);
+    const actions = strategy.combat(body);
     res.json(actions);
   } catch {
     res.json([]);
