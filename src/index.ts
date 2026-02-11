@@ -32,16 +32,18 @@ app.get('/healthz', (req: Request, res: Response) => {
   res.json({ status: 'OK' });
 });
 
+// Global error handler (catches errors but doesn't prevent crash from throw)
+app.use((err: Error, req: Request, res: Response, next: any) => {
+  console.error('❌ Global error handler caught:', err.message);
+
+  // For other errors, respond with 500
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: err.message
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
 
-app.get('/panic', (req: Request, res: Response) => {
-  console.error('🚨 PANIC ENDPOINT TRIGGERED - Simulating critical error');
-  
-  // Option 1: Throw an uncaught exception (will crash the process)
-  throw new Error('💥 CRITICAL ERROR: Simulated application panic for testing purposes');
-  
-  // This code will never execute
-  res.status(500).json({ error: 'This will never be sent' });
-});
