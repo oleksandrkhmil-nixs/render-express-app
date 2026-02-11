@@ -151,7 +151,9 @@ function executeEndgameStrategy(
   }
 
   // Dump remaining resources into armor (80% ratio)
-  const armorDump = Math.floor(resources * ENDGAME_ARMOR_RATIO);
+  // Only if we don't already have excessive armor (cap at 100)
+  const maxArmorNeeded = Math.max(0, 100 - currentArmor);
+  const armorDump = Math.min(Math.floor(resources * ENDGAME_ARMOR_RATIO), maxArmorNeeded);
   if (armorDump > 0 && !hasArmorAction(actions)) {
     actions.push({ type: 'armor', amount: armorDump });
   }
