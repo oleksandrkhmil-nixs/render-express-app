@@ -71,6 +71,9 @@ function armorControlCombat(request: CombatRequest): CombatAction[] {
   if (!target) {
     return [];
   }
+  if (target.armor > resources) {
+    return [];
+  }
 
   return [{ type: 'attack', targetId: target.playerId, troopCount: resources }];
 }
