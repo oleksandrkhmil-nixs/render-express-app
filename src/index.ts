@@ -1,42 +1,70 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import type { NegotiateRequest, CombatRequest, NegotiateResponseItem } from './types';
+import { computeCombatActions } from './combat';
 
 const app = express();
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 8000;
 
+const BOT_NAME = process.env.BOT_NAME ?? 'Kingdom Wars Bot';
+const BOT_VERSION = '1.0';
+
 app.use(express.json());
 app.use(cors());
 
-// Define a type for your move object (adjust this based on your actual data structure)
-interface RequestBody {
-  id?: number;
-  name?: string;
-  // Add other properties as needed
-}
+/** Log every request with [KW-BOT] prefix for the log collector. */
+app.use((req: Request, _res: Response, next: () => void) => {
+  console.log(`[KW-BOT] ${req.method} ${req.path}`);
+  next();
+});
 
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
   res.send('if err != nil rulez');
 });
 
-app.post('/post', (req: Request, res: Response) => {
-  console.log(req.body);
-
-  // You need to define what 'move' is or get it from somewhere
-  // This is just an example - replace with your actual data
-  const move: RequestBody = req.body; // or whatever your move data is
-
-  res.json(move);
-});
-
-app.get('/healthz', (req: Request, res: Response) => {
+app.get('/healthz', (_req: Request, res: Response) => {
   res.json({ status: 'OK' });
 });
 
-// Global error handler (catches errors but doesn't prevent crash from throw)
-app.use((err: Error, req: Request, res: Response, next: any) => {
-  console.error('❌ Global error handler caught:', err.message);
+app.get('/info', (_req: Request, res: Response) => {
+  res.json({
+    name: BOT_NAME,
+    strategy: 'AI-trapped-strategy',
+    version: BOT_VERSION
+  });
+});
 
-  // For other errors, respond with 500
+app.post('/negotiate', (req: Request, res: Response) => {
+  try {
+    const body = req.body as NegotiateRequest;
+    if (!body || typeof body.gameId !== 'number' || !body.playerTower || !Array.isArray(body.enemyTowers)) {
+      res.json([]);
+      return;
+    }
+    const diplomacy: NegotiateResponseItem[] = [];
+    res.json(diplomacy);
+  } catch {
+    res.json([]);
+  }
+});
+
+app.post('/combat', (req: Request, res: Response) => {
+  try {
+    const body = req.body as CombatRequest;
+    if (!body || typeof body.gameId !== 'number' || !body.playerTower || !Array.isArray(body.enemyTowers)) {
+      res.json([]);
+      return;
+    }
+    const actions = computeCombatActions(body);
+    res.json(actions);
+  } catch {
+    res.json([]);
+  }
+});
+
+// Global error handler (catches errors but doesn't prevent crash from throw)
+app.use((err: Error, req: Request, res: Response, _next: () => void) => {
+  console.error('❌ Global error handler caught:', err.message);
   res.status(500).json({
     error: 'Internal Server Error',
     message: err.message
@@ -46,4 +74,3 @@ app.use((err: Error, req: Request, res: Response, next: any) => {
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
-
