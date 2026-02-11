@@ -11,10 +11,10 @@ function costToKill(tower: Tower): number {
 }
 
 /**
- * One-enemy mode (1v1): collect, upgrade to level 3, then spend everything on armor.
+ * Two-enemies mode: collect, upgrade to level 3, then spend everything on armor.
  * After an upgrade, spend any leftover resources on armor.
  */
-function oneEnemyActions(request: CombatRequest): CombatAction[] {
+function twoEnemiesEconomyActions(request: CombatRequest): CombatAction[] {
   const actions: CombatAction[] = [];
   const { playerTower } = request;
   let resources = playerTower.resources ?? 0;
@@ -41,30 +41,30 @@ function oneEnemyActions(request: CombatRequest): CombatAction[] {
 }
 
 /**
- * Save-for-kill strategy when 2+ enemies:
- * 1. Collect: if we can't kill any enemy, return [] (save resources).
- * 2. Kill: if we can kill at least one, attack the cheapest-to-kill target(s).
+ * One-enemy mode: spend everything on attacking the last living target.
  */
-export function computeCombatActions(request: CombatRequest): CombatAction[] {
-  const actions: CombatAction[] = [];
-  const { playerTower, enemyTowers } = request;
-  let resources = playerTower.resources ?? 0;
-
-  const living = enemyTowers.filter((t) => t.hp > 0);
-  if (living.length === 0) {
+function oneEnemyActions(request: CombatRequest, living: Tower[]): CombatAction[] {
+  const resources = request.playerTower.resources ?? 0;
+  if (resources <= 0 || living.length === 0) {
     return [];
   }
+  const target = living[0];
+  return [{ type: 'attack', targetId: target.playerId, troopCount: resources }];
+}
 
-  if (living.length === 1) {
-    return oneEnemyActions(request);
-  }
+/**
+ * Save-for-kill: wait until enough resources to kill someone, then attack cheapest-to-kill target(s).
+ * Used for 3+ enemies.
+ */
+function threeEnemiesActions(request: CombatRequest, living: Tower[]): CombatAction[] {
+  const actions: CombatAction[] = [];
+  let resources = request.playerTower.resources ?? 0;
 
   const minCostToKill = Math.min(...living.map(costToKill));
   if (resources < minCostToKill) {
     return [];
   }
 
-  // Kill phase: attack cheapest-to-kill targets until we can't afford another kill
   const remaining = living.slice();
   while (remaining.length > 0 && resources > 0) {
     remaining.sort((a, b) => costToKill(a) - costToKill(b));
@@ -81,4 +81,25 @@ export function computeCombatActions(request: CombatRequest): CombatAction[] {
   }
 
   return actions;
+}
+
+/**
+ * Strategy by number of living enemies:
+ * - 1 enemy: spend everything on attacking the last living target.
+ * - 2 enemies: economy mode (upgrade to level 3, then armor; armor after upgrade if leftover).
+ * - 3+ enemies: save until we can kill, then attack cheapest-to-kill target(s).
+ */
+export function computeCombatActions(request: CombatRequest): CombatAction[] {
+  const { enemyTowers } = request;
+  const living = enemyTowers.filter((t) => t.hp > 0);
+
+  if (living.length === 0) {
+    return [];
+  }
+
+  if (living.length === 2) {
+    return twoEnemiesEconomyActions(request);
+  }
+
+  return threeEnemiesActions(request, living);
 }
