@@ -17,7 +17,7 @@ app.use(cors());
 
 /** Log every request with [KW-BOT] prefix for the log collector. */
 app.use((req: Request, _res: Response, next: () => void) => {
-  console.log(`[KW-BOT] ${req.method} ${req.path}`);
+  console.log(`[KW-BOT] [strategy=${ACTIVE_STRATEGY}] ${req.method} ${req.path}`);
   next();
 });
 
