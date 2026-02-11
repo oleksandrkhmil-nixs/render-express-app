@@ -48,7 +48,13 @@ function armorControlCombat(request: CombatRequest): CombatAction[] {
 
   // Rule 1: if anyone has more armor than us, invest in armor.
   if (!hasMostArmor) {
-    return [{ type: 'armor', amount: resources }];
+    const targetArmor = maxEnemyArmor + 5;
+    const armorNeeded = Math.max(0, targetArmor - myArmor);
+    const armorAmount = Math.min(resources, armorNeeded);
+    if (armorAmount > 0) {
+      return [{ type: 'armor', amount: armorAmount }];
+    }
+    return [];
   }
 
   // Rule 2: if we have most armor and we're under level 3, push levels.
