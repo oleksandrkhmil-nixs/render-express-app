@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import type { NegotiateRequest, CombatRequest, NegotiateResponseItem } from './types';
 import { computeCombatActions } from './combat';
+import { findStrongestEnemy, findWeakestEnemy, getAliveTowers } from './types';
 
 const app = express();
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 8000;
@@ -34,6 +35,11 @@ app.get('/info', (_req: Request, res: Response) => {
   });
 });
 
+/**
+ * Negotiation Strategy ("The Iron Bank" Diplomacy):
+ * 1. Ally with the STRONGEST enemy (suck up to the bully to deflect aggression)
+ * 2. Suggest attacking the WEAKEST enemy (coordinate the lobby against them)
+ */
 app.post('/negotiate', (req: Request, res: Response) => {
   try {
     const body = req.body as NegotiateRequest;
@@ -41,7 +47,34 @@ app.post('/negotiate', (req: Request, res: Response) => {
       res.json([]);
       return;
     }
+
+    const aliveTowers = getAliveTowers(body.enemyTowers);
+    if (aliveTowers.length === 0) {
+      res.json([]);
+      return;
+    }
+
     const diplomacy: NegotiateResponseItem[] = [];
+
+    // Find the strongest enemy to ally with (Non-Aggression Pact)
+    const strongest = findStrongestEnemy(aliveTowers);
+    
+    // Find the weakest enemy to suggest as a target
+    const weakest = findWeakestEnemy(aliveTowers);
+
+    if (strongest) {
+      const diplomacyMessage: NegotiateResponseItem = {
+        allyId: strongest.playerId
+      };
+
+      // If there's a different weak target, suggest attacking them
+      if (weakest && weakest.playerId !== strongest.playerId) {
+        diplomacyMessage.attackTargetId = weakest.playerId;
+      }
+
+      diplomacy.push(diplomacyMessage);
+    }
+
     res.json(diplomacy);
   } catch {
     res.json([]);
