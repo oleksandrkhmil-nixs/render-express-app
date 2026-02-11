@@ -33,6 +33,40 @@ const AGGRESSION_TURN = 20;
 /** Retaliation multiplier - hit back harder than they hit you */
 const RETALIATION_MULTIPLIER = 1.5;
 
+/** Chance of taking a random strategic action (0.0 to 1.0) */
+const CHAOS_FACTOR = 0.15; // 15% chance of random action
+
+/**
+ * Roll for chaos - returns true if we should do something unpredictable
+ */
+function rollForChaos(): boolean {
+  return Math.random() < CHAOS_FACTOR;
+}
+
+/**
+ * Pick a random element from an array
+ */
+function pickRandom<T>(arr: T[]): T | null {
+  if (arr.length === 0) return null;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * Random strategic variations - still smart, but unpredictable
+ */
+type ChaosAction = 'attack_random' | 'attack_strongest' | 'over_armor' | 'early_upgrade' | 'hold_resources';
+
+function getRandomChaosAction(): ChaosAction {
+  const actions: ChaosAction[] = [
+    'attack_random',      // Attack a random enemy (confuse opponents)
+    'attack_strongest',   // Go after the leader
+    'over_armor',         // Build extra armor (turtle up)
+    'early_upgrade',      // Upgrade earlier than planned
+    'hold_resources',     // Save everything (unpredictable hoarding)
+  ];
+  return actions[Math.floor(Math.random() * actions.length)];
+}
+
 /**
  * "Trust But Verify" Combat Strategy
  * 
@@ -92,6 +126,61 @@ export function computeCombatActions(request: CombatRequest): CombatAction[] {
   // ============ PHASE 3: ENDGAME / AGGRESSION MODE (Turn 20+) ============
   if (turn >= AGGRESSION_TURN) {
     return executeEndgameStrategy(actions, resources, armor, aliveTowers, turn, hp, previousAttacks, myId);
+  }
+
+  // ============ CHAOS MODE: OCCASIONAL UNPREDICTABILITY ============
+  // Roll for chaos - occasionally do something unexpected to confuse opponents
+  if (rollForChaos() && resources > 0) {
+    const chaosAction = getRandomChaosAction();
+    
+    switch (chaosAction) {
+      case 'attack_random': {
+        // Attack a random enemy with a small force (confusion tactic)
+        const randomTarget = pickRandom(aliveTowers);
+        if (randomTarget && !hasAttackOnTarget(actions, randomTarget.playerId)) {
+          const chaosAttack = Math.min(resources, Math.floor(resources * 0.3)); // 30% of resources
+          if (chaosAttack > 5) {
+            actions.push({ type: 'attack', targetId: randomTarget.playerId, troopCount: chaosAttack });
+            resources -= chaosAttack;
+          }
+        }
+        break;
+      }
+      case 'attack_strongest': {
+        // Go after the leader (king-slayer move)
+        const strongest = aliveTowers.reduce((a, b) => b.level > a.level ? b : a);
+        if (!hasAttackOnTarget(actions, strongest.playerId)) {
+          const chaosAttack = Math.min(resources, Math.floor(resources * 0.4)); // 40% of resources
+          if (chaosAttack > 10) {
+            actions.push({ type: 'attack', targetId: strongest.playerId, troopCount: chaosAttack });
+            resources -= chaosAttack;
+          }
+        }
+        break;
+      }
+      case 'over_armor': {
+        // Turtle up - dump extra resources into armor
+        const extraArmor = Math.min(resources, 50);
+        if (extraArmor > 0 && armor < MAX_USEFUL_ARMOR && !hasArmorAction(actions)) {
+          actions.push({ type: 'armor', amount: extraArmor });
+          resources -= extraArmor;
+        }
+        break;
+      }
+      case 'early_upgrade': {
+        // Try to upgrade even if we normally wouldn't
+        if (resources >= upgradeCost(level) && level < MAX_LEVEL_IF_RICH && turn <= UPGRADE_CUTOFF_TURN) {
+          actions.push({ type: 'upgrade' });
+          resources -= upgradeCost(level);
+        }
+        break;
+      }
+      case 'hold_resources': {
+        // Do nothing extra this turn (hoard resources unpredictably)
+        // Just fall through to normal logic but we've "chosen" to hold
+        break;
+      }
+    }
   }
 
   // ============ PHASE 1 & 2: BUILD UP AND FORTRESS ============
