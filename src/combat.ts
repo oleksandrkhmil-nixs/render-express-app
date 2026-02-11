@@ -55,7 +55,7 @@ function oneEnemyActions(request: CombatRequest, living: Tower[]): CombatAction[
 }
 
 /**
- * Save-for-kill: wait until enough resources to kill someone, then attack cheapest-to-kill target(s).
+ * Save-for-kill: wait until enough resources to kill someone, then attack target(s), preferring highest level.
  * Used for 3+ enemies. If HP < 100 and armor <= 10, spend everything on armor until armor > 10.
  */
 function threeEnemiesActions(request: CombatRequest, living: Tower[]): CombatAction[] {
@@ -74,7 +74,7 @@ function threeEnemiesActions(request: CombatRequest, living: Tower[]): CombatAct
 
   const remaining = living.slice();
   while (remaining.length > 0 && resources > 0) {
-    remaining.sort((a, b) => costToKill(a) - costToKill(b));
+    remaining.sort((a, b) => b.level - a.level || costToKill(a) - costToKill(b));
     const target = remaining[0];
     const cost = costToKill(target);
     if (resources < cost) break;
