@@ -1,7 +1,8 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import type { NegotiateRequest, CombatRequest, NegotiateResponseItem } from './types';
+import type { NegotiateRequest, CombatRequest } from './types';
 import { computeCombatActions } from './combat';
+import { computeNegotiationActions } from './negotiate';
 
 const app = express();
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 8000;
@@ -41,7 +42,7 @@ app.post('/negotiate', (req: Request, res: Response) => {
       res.json([]);
       return;
     }
-    const diplomacy: NegotiateResponseItem[] = [];
+    const diplomacy = computeNegotiationActions(body);
     res.json(diplomacy);
   } catch {
     res.json([]);
