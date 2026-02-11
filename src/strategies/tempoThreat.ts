@@ -3,7 +3,8 @@ import { upgradeCost } from '../types';
 import type { Strategy } from './types';
 
 const LEVEL_STRENGTH_CAP = 3;
-const EARLY_UPGRADE_TURN_LIMIT = 12;
+const UPGRADE_TARGET_LEVEL = 3;
+const EARLY_UPGRADE_TURN_LIMIT = 20;
 const LATE_GAME_TURN = 20;
 
 function cappedLevel(level: number): number {
@@ -87,16 +88,45 @@ function tempoThreatCombat(request: CombatRequest): CombatAction[] {
     return [];
   }
 
-  // 1) Survive first: buy only the armor needed for likely incoming damage.
   const expectedIncoming = estimateIncomingDamage(request);
   const neededArmor = Math.max(0, expectedIncoming - player.armor);
-  const armorToBuy = Math.min(resources, Math.floor(neededArmor));
+  const upgradePrice = upgradeCost(level);
+  const canStillUpgradeThisTurn =
+    request.turn <= EARLY_UPGRADE_TURN_LIMIT && level < UPGRADE_TARGET_LEVEL && resources >= upgradePrice;
+  const lowThreatForFastUpgrade = neededArmor <= 8;
+  let didUpgrade = false;
+
+  // 1) Prefer immediate growth on low-threat turns.
+  if (canStillUpgradeThisTurn && lowThreatForFastUpgrade) {
+    actions.push({ type: 'upgrade' });
+    resources -= upgradePrice;
+    didUpgrade = true;
+  }
+
+  // 2) Survive: reserve upgrade cost first unless this is an emergency threat turn.
+  let armorBudget = resources;
+  if (!didUpgrade && canStillUpgradeThisTurn) {
+    const reservedForUpgrade = upgradePrice;
+    const budgetIfReserved = Math.max(0, resources - reservedForUpgrade);
+    const emergencyThreat = neededArmor > budgetIfReserved + 20;
+    armorBudget = emergencyThreat ? resources : budgetIfReserved;
+  }
+
+  const armorToBuy = Math.min(armorBudget, Math.floor(neededArmor));
   if (armorToBuy > 0) {
     actions.push({ type: 'armor', amount: armorToBuy });
     resources -= armorToBuy;
   }
 
-  // 2) If we can finish anyone safely, take the elimination immediately.
+  // 3) Second chance to upgrade before attacking.
+  const shouldUpgradeNow = !didUpgrade && canStillUpgradeThisTurn && resources >= upgradePrice;
+  if (shouldUpgradeNow) {
+    actions.push({ type: 'upgrade' });
+    resources -= upgradePrice;
+    didUpgrade = true;
+  }
+
+  // 4) If we can finish anyone safely, take the elimination immediately.
   const killTarget = chooseBestKill(liveEnemies, resources);
   if (killTarget) {
     const killTroops = Math.min(resources, killTarget.hp + killTarget.armor);
@@ -107,15 +137,7 @@ function tempoThreatCombat(request: CombatRequest): CombatAction[] {
     }
   }
 
-  // 3) Grow in early game only.
-  const shouldUpgrade =
-    request.turn <= EARLY_UPGRADE_TURN_LIMIT && level < LEVEL_STRENGTH_CAP && resources >= upgradeCost(level);
-  if (shouldUpgrade) {
-    actions.push({ type: 'upgrade' });
-    resources -= upgradeCost(level);
-  }
-
-  // 4) Use remaining resources to pressure the strongest available target.
+  // 5) Use remaining resources to pressure the strongest available target.
   if (resources > 0) {
     const pressureTarget = choosePressureTarget(liveEnemies, attackedTargetIds);
     if (pressureTarget) {
