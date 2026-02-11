@@ -24,6 +24,9 @@ const AGGRESSIVE_ARMOR_PER_LEVEL = 25;
 /** Minimum armor to maintain at all times */
 const MIN_ARMOR_FLOOR = 30;
 
+/** Armor threshold where we're "well defended" and should prioritize upgrading */
+const WELL_DEFENDED_ARMOR = 100;
+
 /** Turn to start being aggressive to avoid fatigue draw */
 const AGGRESSION_TURN = 20;
 
@@ -99,9 +102,9 @@ export function computeCombatActions(request: CombatRequest): CombatAction[] {
   // Check if we should prioritize defense (low HP or low armor)
   const needsDefense = hp < HP_SAFETY_THRESHOLD || armor < targetArmor || armor < MIN_ARMOR_FLOOR;
   
-  // Determine if we should upgrade
+  // Determine if we should upgrade (now considers if we're under attack)
   const canAffordUpgrade = resources >= upgradeCost(level);
-  const shouldUpgrade = getShouldUpgrade(turn, level, hp, armor, resources, targetArmor);
+  const shouldUpgrade = getShouldUpgrade(turn, level, hp, armor, resources, targetArmor, previousAttacks, myId);
 
   if (shouldUpgrade && canAffordUpgrade) {
     // ============ UPGRADE PATH ============
@@ -230,6 +233,9 @@ function executeEndgameStrategy(
 
 /**
  * Determine if we should upgrade this turn
+ * 
+ * NEW LOGIC: If we have lots of armor (100+), prioritize upgrading
+ * unless we're under attack this turn.
  */
 function getShouldUpgrade(
   turn: number,
@@ -237,13 +243,22 @@ function getShouldUpgrade(
   hp: number,
   armor: number,
   resources: number,
-  targetArmor: number
+  targetArmor: number,
+  previousAttacks: CombatActionAttack[],
+  myId: number
 ): boolean {
   // Never upgrade after cutoff turn
   if (turn > UPGRADE_CUTOFF_TURN) return false;
 
   // Don't upgrade if HP is critical
   if (hp < 60) return false;
+
+  // Check if we're under attack this turn
+  const damageIncoming = totalDamageReceived(previousAttacks, myId);
+  const underAttack = damageIncoming > 0;
+
+  // If under heavy attack (taking significant damage), don't upgrade - focus on defense
+  if (damageIncoming >= 30) return false;
 
   // Determine level cap based on situation
   const isRichAndSafe = hp >= 90 && armor >= targetArmor && resources >= 200;
@@ -260,6 +275,13 @@ function getShouldUpgrade(
     }
     // If low HP, only upgrade if we can also afford some armor
     return resources >= upgradeCost(level) + 10;
+  }
+
+  // NEW: If we have lots of armor (well-defended), prioritize upgrading
+  // unless we're actively under attack
+  if (armor >= WELL_DEFENDED_ARMOR && !underAttack) {
+    // We're sitting on a pile of armor - time to invest in income!
+    return resources >= upgradeCost(level);
   }
 
   // Phase 2 (Turns 9-20): Only upgrade if safe
